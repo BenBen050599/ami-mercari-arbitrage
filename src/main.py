@@ -17,13 +17,15 @@ from src.database import init_db, save_matched, save_unmatched, export_reports
 
 # ── 配置 ──────────────────────────────────────────
 CONFIG = {
-    'MIN_DISCOUNT':   30,    # AmiAmi 最低折扣 %
-    'MIN_PRICE':    1000,    # 最低价格 yen
-    'MAX_PRICE':   30000,    # 最高价格 yen
-    'MIN_PROFIT':   1000,    # 最低净利润 yen
-    'MIN_PROFIT_RATE': 20,   # 最低利润率 %
-    'MIN_MERCARI_COUNT': 3,  # Mercari 最少成交记录数
-    'AMIAMI_MAX_PAGES': 3,
+    'MIN_DISCOUNT':       30,  # AmiAmi 最低折扣 %
+    'MIN_PRICE':        1000,  # 最低价格 yen
+    'MAX_PRICE':       30000,  # 最高价格 yen
+    'MIN_PROFIT':       1000,  # 最低净利润 yen
+    'MIN_PROFIT_RATE':    20,  # 最低利润率 %
+    'MIN_MERCARI_COUNT':   3,  # Mercari 最少成交记录数
+    'AMIAMI_MAX_PAGES':    3,  # 每页60个，最多180个原始商品
+    'MAX_ITEMS_TO_CHECK': 50,  # 过滤后最多查50个（约4分钟）
+    'MERCARI_SAMPLE_SIZE': 20, # 每个商品查20条成交记录
 }
 # ──────────────────────────────────────────────────
 
@@ -53,7 +55,9 @@ def run():
         and i['stock_status'] == 'in_stock'
         and i['condition'] in ['A', 'B', 'C']
     ]
-    print(f"  原始: {len(raw_items)} 个 → 过滤后: {len(items)} 个")
+    # 限制最多查 MAX_ITEMS_TO_CHECK 个
+    items = items[:CONFIG['MAX_ITEMS_TO_CHECK']]
+    print(f"  原始: {len(raw_items)} 个 → 过滤后: {len(items)} 个（上限 {CONFIG['MAX_ITEMS_TO_CHECK']}）")
 
     # ── Step 2: Mercari 匹配 ─────────────────────
     print("\n🔍 Step 2: Mercari 价格匹配...")
@@ -64,7 +68,7 @@ def run():
         name = item['name']
         print(f"  [{i}/{len(items)}] {name[:45]}")
 
-        stats = searcher.get_price_stats(name, sample_size=20)
+        stats = searcher.get_price_stats(name, sample_size=CONFIG['MERCARI_SAMPLE_SIZE'])
 
         if stats['status'] == 'OK' and stats['count'] >= CONFIG['MIN_MERCARI_COUNT']:
             # ✅ 匹配成功
