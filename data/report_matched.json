@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-30T18:49:06.735513",
+  "count": 1,
+  "items": [
+    {
+      "id": "test001",
+      "amiami_name": "ねんどろいど 嘴平伊之助 1361",
+      "amiami_url": "https://www.amiami.jp/top/detail/detail_xxx",
+      "amiami_price": 2500,
+      "amiami_orig_price": 6000,
+      "discount": 58.3,
+      "condition": "B",
+      "mercari_keyword": "ねんどろいど 嘴平伊之助",
+      "mercari_avg_price": 4200,
+      "mercari_median": 3800,
+      "mercari_min": 1500,
+      "mercari_max": 8000,
+      "mercari_count": 12,
+      "mercari_search_url": "https://jp.mercari.com/search?keyword=ねんどろいど+嘴平伊之助&status=sold_out",
+      "adjusted_price": 3230,
+      "mercari_fee": 323,
+      "shipping": 700,
+      "net_profit": 1557,
+      "profit_rate": 62.3,
+      "should_buy": 1,
+      "found_at": "2026-03-30T18:49:06.734472"
+    }
+  ]
+}
