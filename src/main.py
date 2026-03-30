@@ -48,12 +48,11 @@ def run():
     raw_items = scraper.scrape_used_figures(max_pages=CONFIG['AMIAMI_MAX_PAGES'])
 
     # 基础过滤
+    # 注意：AmiAmi 列表页无折扣字段（discount=0），不用折扣过滤
+    # 只按价格区间过滤
     items = [
         i for i in raw_items
-        if i['discount'] >= CONFIG['MIN_DISCOUNT']
-        and CONFIG['MIN_PRICE'] <= i['sale_price'] <= CONFIG['MAX_PRICE']
-        and i['stock_status'] == 'in_stock'
-        and i['condition'] in ['A', 'B', 'C']
+        if CONFIG['MIN_PRICE'] <= i['sale_price'] <= CONFIG['MAX_PRICE']
     ]
     # 限制最多查 MAX_ITEMS_TO_CHECK 个
     items = items[:CONFIG['MAX_ITEMS_TO_CHECK']]
@@ -133,7 +132,7 @@ def run():
     matched, unmatched = export_reports()
 
     # ── 汇总 ─────────────────────────────────────
-    buy_list = [m for m in matched if m['should_buy']]
+    buy_list = [m for m in matched_rows if m['should_buy']]
     print("\n" + "=" * 60)
     print(f"✅ 匹配成功:  {len(matched_rows)} 个")
     print(f"❓ 未匹配:    {len(unmatched_rows)} 个")
