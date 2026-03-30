@@ -1,9 +1,9 @@
 """
-AmiAmi 中古手办爬虫 - Playwright 版本
-绕过 Cloudflare，用真实浏览器抓取
+AmiAmi 中古手办爬虫 - cloudscraper 版本
+使用 cloudscraper 绕过 Cloudflare
 """
 
-from playwright.sync_api import sync_playwright
+import cloudscraper
 from bs4 import BeautifulSoup
 import json
 import re
@@ -15,58 +15,53 @@ import time
 class AmiAmiScraper:
 
     BASE_URL = "https://slist.amiami.jp/top/search/list3"
-    SEARCH_PARAMS = "?s_st_condition_flg=1&s_condition_flg=1&s_sortkey=preowned&pagemax=60&inc_txt2=31"
+    ITEM_BASE = "https://www.amiami.jp"
 
-    CONDITION_MAP = {
-        'A': '未使用に近い',
-        'B': '目立った傷や汚れなし',
-        'C': 'やや傷や汚れあり',
-        'D': '傷や汚れあり',
-    }
+    def __init__(self):
+        self.scraper = cloudscraper.create_scraper(
+            browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False}
+        )
 
     def scrape_used_figures(self, max_pages: int = 3) -> List[Dict]:
         all_items = []
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                locale='ja-JP',
-                timezone_id='Asia/Tokyo',
-            )
-            page = context.new_page()
+        for page_num in range(1, max_pages + 1):
+            # AmiAmi 翻页用 pagecnt 参数
+            if page_num == 1:
+                url = (
+                    f"{self.BASE_URL}"
+                    f"?s_st_condition_flg=1&s_condition_flg=1"
+                    f"&s_sortkey=preowned&pagemax=60&inc_txt2=31"
+                )
+            else:
+                url = (
+                    f"{self.BASE_URL}"
+                    f"?inc_txt2=31&s_condition_flg=1&s_sortkey=preowned"
+                    f"&s_st_condition_flg=1&pagemax=60&getcnt=0&pagecnt={page_num}"
+                )
 
-            for page_num in range(1, max_pages + 1):
-                url = f"{self.BASE_URL}{self.SEARCH_PARAMS}&page={page_num}"
-                print(f"📄 抓取第 {page_num} 页: {url}")
+            print(f"📄 抓取第 {page_num} 页...")
 
-                try:
-                    page.goto(url, timeout=30000, wait_until='domcontentloaded')
-                    # 等待商品列表加载
-                    page.wait_for_timeout(2000)
+            try:
+                r = self.scraper.get(url, timeout=20)
 
-                    # 检查是否被 Cloudflare 封
-                    title = page.title()
-                    if 'Cloudflare' in title or 'Attention' in title:
-                        print(f"❌ 被 Cloudflare 封锁")
-                        break
-
-                    html = page.content()
-                    items = self._parse_page(html)
-
-                    if not items:
-                        print("✅ 没有更多商品了")
-                        break
-
-                    all_items.extend(items)
-                    print(f"✅ 第 {page_num} 页: 找到 {len(items)} 个商品")
-                    time.sleep(2)
-
-                except Exception as e:
-                    print(f"❌ 错误: {e}")
+                if r.status_code != 200:
+                    print(f"❌ 请求失败: {r.status_code}")
                     break
 
-            browser.close()
+                items = self._parse_page(r.text)
+
+                if not items:
+                    print("✅ 没有更多商品了")
+                    break
+
+                all_items.extend(items)
+                print(f"✅ 第 {page_num} 页: 找到 {len(items)} 个商品")
+                time.sleep(2)
+
+            except Exception as e:
+                print(f"❌ 错误: {e}")
+                break
 
         return all_items
 
@@ -74,10 +69,9 @@ class AmiAmiScraper:
         soup = BeautifulSoup(html, 'html.parser')
         items = []
 
-        # AmiAmi 商品列表
-        for product in soup.select('li.product_item, div.product_item, .item'):
+        for box in soup.select('div.product_box'):
             try:
-                item = self._parse_item(product)
+                item = self._parse_item(box)
                 if item:
                     items.append(item)
             except Exception:
@@ -85,88 +79,85 @@ class AmiAmiScraper:
 
         return items
 
-    def _parse_item(self, elem) -> Dict:
-        # 商品名 + URL
-        name_elem = elem.select_one('a.product_name, .name a, h2 a, a[href*="detail"]')
-        if not name_elem:
+    def _parse_item(self, box) -> Dict:
+        # リンク + gcode
+        a_tag = box.select_one('a[href]')
+        if not a_tag:
             return None
 
+        href = a_tag.get('href', '')
+        gcode_match = re.search(r'gcode=([A-Z0-9\-]+)', href)
+        if not gcode_match:
+            return None
+
+        gcode = gcode_match.group(1)
+        full_url = f"{self.ITEM_BASE}/top/detail/detail?gcode={gcode}"
+
+        # 商品名
+        name_elem = box.select_one('div.product_name_inner')
+        if not name_elem:
+            return None
         name = name_elem.text.strip()
         if not name:
             return None
 
-        relative_url = name_elem.get('href', '')
-        full_url = (
-            f"https://www.amiami.jp{relative_url}"
-            if relative_url.startswith('/')
-            else relative_url
-        )
+        # 価格
+        # product_price = 固定価格
+        # product_price_fromto = 価格帯（複数成色）
+        price_elem = box.select_one('div.product_price')
+        price_range_elem = box.select_one('div.product_price_fromto')
 
-        # 价格
-        price_elem = elem.select_one('.price, .product_price, .price_box')
-        if not price_elem:
-            return None
+        sale_price = 0
+        original_price = 0
+        has_multiple_conditions = False
 
-        price_text = price_elem.text.strip()
-        prices = re.findall(r'[\d,]+', price_text.replace('¥', '').replace('￥', ''))
-        if not prices:
-            return None
-
-        try:
-            if len(prices) >= 2:
-                original_price = int(prices[0].replace(',', ''))
-                sale_price = int(prices[-1].replace(',', ''))
-            else:
-                sale_price = int(prices[0].replace(',', ''))
+        if price_elem:
+            # 固定価格（単一成色）
+            price_text = price_elem.text.strip().replace(',', '')
+            nums = re.findall(r'\d+', price_text)
+            if nums:
+                sale_price = int(nums[0])
                 original_price = sale_price
-        except Exception:
+        elif price_range_elem:
+            # 価格帯（複数成色あり）→ 最低価格を使用
+            price_text = price_range_elem.text.strip().replace(',', '')
+            nums = re.findall(r'\d+', price_text)
+            if nums:
+                sale_price = int(nums[0])
+                original_price = sale_price
+                has_multiple_conditions = True
+
+        if sale_price == 0:
             return None
 
-        discount = round(
-            (original_price - sale_price) / original_price * 100, 1
-        ) if original_price > sale_price else 0
-
-        # 成色
-        condition = 'B'
-        for sel in ['.condition', '.rank', '.grade', '.item_condition']:
-            cond_elem = elem.select_one(sel)
-            if cond_elem:
-                text = cond_elem.text.strip().upper()
-                for grade in ['A', 'B', 'C', 'D']:
-                    if grade in text:
-                        condition = grade
-                        break
-                break
-
-        # 库存
-        stock_status = 'in_stock'
-        if elem.select_one('.soldout, .sold_out, .out_of_stock'):
-            stock_status = 'out_of_stock'
+        # 割引率（product_off があれば）
+        discount = 0
+        off_elem = box.select_one('div.product_off')
+        if off_elem:
+            # 例: "24% - 31%"
+            off_text = off_elem.text.strip()
+            nums = re.findall(r'\d+', off_text)
+            if nums:
+                discount = int(nums[0])  # 最低割引率
+                # 割引前価格を逆算
+                original_price = int(sale_price / (1 - discount / 100))
 
         # 画像
-        img_elem = elem.select_one('img')
+        img_elem = box.select_one('img[data-src]')
         image_url = ''
         if img_elem:
-            image_url = img_elem.get('src', '') or img_elem.get('data-src', '')
-            if image_url.startswith('//'):
-                image_url = 'https:' + image_url
-
-        # ID
-        item_id = ''
-        id_match = re.search(r'detail_([A-Z0-9\-]+)', full_url)
-        if id_match:
-            item_id = id_match.group(1)
+            image_url = img_elem.get('data-src', '')
 
         return {
-            'id': item_id or name[:20],
+            'id': gcode,
             'name': name,
             'url': full_url,
             'original_price': original_price,
             'sale_price': sale_price,
             'discount': discount,
-            'condition': condition,
-            'condition_desc': self.CONDITION_MAP.get(condition, ''),
-            'stock_status': stock_status,
+            'condition': 'B',  # 列表页无成色，默认B（中古）
+            'has_multiple_conditions': has_multiple_conditions,
+            'stock_status': 'in_stock',
             'image_url': image_url,
             'type': 'used',
             'scraped_at': datetime.now().isoformat(),
@@ -187,12 +178,12 @@ class AmiAmiScraper:
 
 if __name__ == "__main__":
     scraper = AmiAmiScraper()
-    print("🔍 开始抓取 AmiAmi 中古打折手办...")
+    print("🔍 开始抓取 AmiAmi 中古手办...")
     items = scraper.scrape_used_figures(max_pages=1)
     print(f"\n📊 总共找到 {len(items)} 个商品")
     if items:
         for item in items[:5]:
-            print(f"\n  📦 {item['name']}")
-            print(f"     成色: {item['condition']} | 折扣: {item['discount']}% | 价格: ¥{item['sale_price']:,}")
+            print(f"\n  📦 {item['name'][:50]}")
+            print(f"     价格: ¥{item['sale_price']:,} | 折扣: {item['discount']}%")
             print(f"     链接: {item['url']}")
         scraper.save_items(items)
