@@ -148,5 +148,51 @@ def export_reports():
     return matched, unmatched
 
 
+
+
+def save_amiami_items(items: list):
+    """保存 AmiAmi 商品到数据库"""
+    conn = get_conn()
+    c = conn.cursor()
+    count = 0
+    for item in items:
+        try:
+            c.execute("""
+                INSERT OR REPLACE INTO amiami_items VALUES (
+                    :id, :name, :url, :sale_price, :orig_price,
+                    :discount, :condition, :image_url, :stock, :scraped_at
+                )
+            """, {
+                'id': item.get('id'),
+                'name': item.get('name'),
+                'url': item.get('url'),
+                'sale_price': item.get('sale_price', 0),
+                'orig_price': item.get('original_price', 0),
+                'discount': item.get('discount', 0),
+                'condition': item.get('condition', 'B'),
+                'image_url': item.get('image_url', ''),
+                'stock': item.get('stock_status', 'in_stock'),
+                'scraped_at': item.get('scraped_at', '')
+            })
+            count += 1
+        except Exception as e:
+            print(f"  ⚠️ 保存失败: {item.get('name', 'Unknown')} - {e}")
+    conn.commit()
+    conn.close()
+    print(f"✅ 保存 {count} 个商品到数据库")
+    return count
+
+
+def get_amiami_items(limit: int = 100):
+    """获取数据库中的 AmiAmi 商品"""
+    conn = get_conn()
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM amiami_items ORDER BY sale_price ASC LIMIT ?", (limit,))
+    items = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return items
+
+
 if __name__ == "__main__":
     init_db()

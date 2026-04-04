@@ -1,1 +1,6 @@
-data/*.db\ndata/*.json\n__pycache__/\n*.pyc\n.env
+data/arbitrage.db
+data/report_*.json
+data/price_comparison.json
+__pycache__/
+*.pyc
+.env

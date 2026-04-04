@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-04-03T15:46:10.192421",
+  "results": [
+    {
+      "name": "一番くじ 学園アイドルマスター Part4 B賞 倉本千奈 フィギュア 1/7 Gracemaster (プライズ)",
+      "amiami_price": 4180,
+      "mercari_median": 21666,
+      "mercari_count": 10,
+      "net_profit": 11345,
+      "profit_rate": 271.41148325358853,
+      "should_buy": true,
+      "amiami_url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-197433-R",
+      "mercari_url": "https://jp.mercari.com/search?keyword=一番くじ 学園アイドルマスター Part4 B賞 倉本千奈&status=sold_out"
+    },
+    {
+      "name": "初音ミク BANPRESTO EVOLVE Clearluxe-クリオネ-フィギュア (プライズ)",
+      "amiami_price": 1180,
+      "mercari_median": 16749,
+      "mercari_count": 10,
+      "net_profit": 10583,
+      "profit_rate": 896.8644067796611,
+      "should_buy": true,
+      "amiami_url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-189914-R",
+      "mercari_url": "https://jp.mercari.com/search?keyword=初音ミク BANPRESTO EVOLVE Clearlux&status=sold_out"
+    },
+    {
+      "name": "メガミデバイス PUNI☆MOFU 雪トゥ 1/1 プラモデル",
+      "amiami_price": 6480,
+      "mercari_median": 13249,
+      "mercari_count": 10,
+      "net_profit": 2605,
+      "profit_rate": 40.20061728395062,
+      "should_buy": true,
+      "amiami_url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-186604-R",
+      "mercari_url": "https://jp.mercari.com/search?keyword=メガミデバイス PUNI☆MOFU 雪トゥ&status=sold_out"
+    }
+  ]
+}

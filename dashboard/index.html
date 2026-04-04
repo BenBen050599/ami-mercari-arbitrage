@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AmiAmi 中古手办监控</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #111827; color: white; }
+        .bg-gray-800 { background-color: #1f2937; }
+        .bg-gray-900 { background-color: #111827; }
+        .hover\:bg-gray-750:hover { background-color: #374151; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold">🛒 AmiAmi 中古手办监控</h1>
+                <p class="text-gray-400 mt-1">实时追踪套利机会</p>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-400">最后更新</div>
+                <div id="lastUpdate" class="text-lg font-mono">--</div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">总商品数</div>
+                <div id="totalCount" class="text-3xl font-bold text-blue-400">--</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">最低价</div>
+                <div id="minPrice" class="text-3xl font-bold text-green-400">--</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">最高价</div>
+                <div id="maxPrice" class="text-3xl font-bold text-red-400">--</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">平均价</div>
+                <div id="avgPrice" class="text-3xl font-bold text-yellow-400">--</div>
+            </div>
+        </div>
+
+        <!-- Price Chart -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">💰 价格分布</h2>
+            <canvas id="priceChart" height="100"></canvas>
+        </div>
+
+        <!-- Items Table -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">📦 商品列表</h2>
+                <div class="flex gap-2">
+                    <button onclick="sortItems('price_asc')" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700">价格↑</button>
+                    <button onclick="sortItems('price_desc')" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700">价格↓</button>
+                    <button onclick="sortItems('name')" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700">名称</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left text-gray-400 border-b border-gray-700">
+                            <th class="pb-3 px-2">#</th>
+                            <th class="pb-3 px-2">商品名</th>
+                            <th class="pb-3 px-2 text-right">价格</th>
+                            <th class="pb-3 px-2 text-right">原价</th>
+                            <th class="pb-3 px-2 text-center">成色</th>
+                            <th class="pb-3 px-2">链接</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTable">
+                        <!-- 动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 直接嵌入数据（不依赖外部文件）
+        const EMBEDDED_DATA = {"timestamp": "2026-04-03T15:46:10.192421", "count": 58, "items": [{"id": "FIGURE-127253-R", "name": "DarkAdvent Dragondress ソフィア DX ver.1.1 プラモデル", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-127253-R", "original_price": 7980, "sale_price": 7980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/212/FIGURE-127253.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.176033"}, {"id": "FIGURE-197433-R", "name": "一番くじ 学園アイドルマスター Part4 B賞 倉本千奈 フィギュア 1/7 Gracemaster (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-197433-R", "original_price": 4180, "sale_price": 4180, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/261/FIGURE-197433.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.176242"}, {"id": "FIGURE-189914-R", "name": "初音ミク BANPRESTO EVOLVE Clearluxe-クリオネ-フィギュア (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-189914-R", "original_price": 1180, "sale_price": 1180, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/253/FIGURE-189914.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.176432"}, {"id": "FIGURE-185507-R", "name": "Figuarts Zero chouette らんま 『らんま1/2』", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-185507-R", "original_price": 6540, "sale_price": 6540, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/252/FIGURE-185507.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.176617"}, {"id": "FIGURE-186604-R", "name": "メガミデバイス PUNI☆MOFU 雪トゥ 1/1 プラモデル", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-186604-R", "original_price": 6480, "sale_price": 6480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/252/FIGURE-186604.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.176798"}, {"id": "FIGURE-193657-R", "name": "アニメ『ウマ娘 シンデレラグレイ』 BANPRESTO EVOLVE タマモクロスフィギュア (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-193657-R", "original_price": 3480, "sale_price": 3480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/254/FIGURE-193657.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.176981"}, {"id": "FIGURE-191904-R", "name": "ウマ娘 プリティーダービー Trio-Try-iT Figure―ジェンティルドンナー (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-191904-R", "original_price": 3480, "sale_price": 3480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/254/FIGURE-191904.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.177163"}, {"id": "FIGURE-189521-R", "name": "【特典】メガミデバイス PUNI☆MOFU シャオ 1/1 プラモデル (コトブキヤショップ限定)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-189521-R", "original_price": 5780, "sale_price": 5780, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/253/FIGURE-189521.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.177525"}, {"id": "FIGURE-181605-R", "name": "ホロライブプロダクション 博衣こより 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-181605-R", "original_price": 19980, "sale_price": 19980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/251/FIGURE-181605.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.177707"}, {"id": "FIGURE-185430-R", "name": "パンツァーバニー アンネリーゼ用武装オプションパーツ 1/12 完成品オプションパーツ", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-185430-R", "original_price": 2180, "sale_price": 2180, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/252/FIGURE-185430.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.177888"}, {"id": "FIGURE-179562-R", "name": "すーぱーそに子 BiCute Bunnies FigureーNewly Drawn Costume 燕尾ver.ー (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-179562-R", "original_price": 2180, "sale_price": 2180, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/251/FIGURE-179562.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.178066"}, {"id": "FIGURE-187051-R", "name": "宇崎ちゃんは遊びたい！ω GLITTER＆GLAMOURS 宇崎月 メイドver. (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-187051-R", "original_price": 1980, "sale_price": 1980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/252/FIGURE-187051.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.178246"}, {"id": "FIGURE-182417-R", "name": "【あみあみ限定版】アズールレーン「ケルサン ホーリー・ランニング」 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-182417-R", "original_price": 17980, "sale_price": 17980, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/251/FIGURE-182417.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.178425"}, {"id": "FIGURE-185429-R", "name": "RA-03 パンツァーバニー アンネリーゼ 1/12 完成品アクションフィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-185429-R", "original_price": 4980, "sale_price": 4980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/252/FIGURE-185429.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.178613"}, {"id": "FIGURE-184337-R", "name": "バニースーツ プランニング ソフィア・F・シャーリング チアリーダーVer. 1/6 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-184337-R", "original_price": 22980, "sale_price": 22980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/251/FIGURE-184337.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.178795"}, {"id": "FIGURE-185102-R", "name": "ブルーアーカイブ「プラナ」 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-185102-R", "original_price": 19170, "sale_price": 19170, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/252/FIGURE-185102.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.178974"}, {"id": "FIGURE-193153-R", "name": "To LOVEる-とらぶる-ダークネス Desktop Cute フィギュア 結城美柑～チャイナドレスver.～ (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-193153-R", "original_price": 1440, "sale_price": 1440, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/254/FIGURE-193153.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.179154"}, {"id": "FIGURE-197223-R", "name": "To LOVEる-とらぶる-ダークネス Desktop Cute フィギュア ナナ～チャイナドレスver.～ (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-197223-R", "original_price": 3180, "sale_price": 3180, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/261/FIGURE-197223.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.179331"}, {"id": "FIGURE-189967-R", "name": "POP UP PARADE Panty＆Stocking with Garterbelt パンティ＆ストッキング セット 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-189967-R", "original_price": 9450, "sale_price": 9450, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/253/FIGURE-189967.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.179509"}, {"id": "FIGURE-165867-R", "name": "初音ミク×Rody AMP+ フィギュア～39/サンキューver.～ (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-165867-R", "original_price": 1480, "sale_price": 1480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/241/FIGURE-165867.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.179686"}, {"id": "FIGURE-172221-R", "name": "GRIDMAN DYNAZENON x アズールレーン 宝多六花 ブルースカイ・ステーション 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-172221-R", "original_price": 9810, "sale_price": 9810, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-172221.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.179864"}, {"id": "FIGURE-172132-R", "name": "アズールレーン 樫野 花咲くラブリーストレインVer. 1/6 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-172132-R", "original_price": 16780, "sale_price": 16780, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-172132.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.180042"}, {"id": "FIGURE-171586-R", "name": "ねんどろいど BLACK CAT トレイン=ハートネット", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-171586-R", "original_price": 2890, "sale_price": 2890, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-171586.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.180222"}, {"id": "FIGURE-176391-R", "name": "【特典】アズールレーン ウルリッヒ・フォン・フッテン メドヘン・トリュンマーVer. 1/6 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-176391-R", "original_price": 20980, "sale_price": 20980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/244/FIGURE-176391.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.180400"}, {"id": "FIGURE-173385-R", "name": "ブルーアーカイブ -Blue Archive- 室笠アカネ(バニーガール) 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-173385-R", "original_price": 14480, "sale_price": 14480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/243/FIGURE-173385.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.180579"}, {"id": "FIGURE-176481-R", "name": "ライザのアトリエ2 ～失われた伝承と秘密の妖精～ ライザリン・シュタウト 水着Ver. 1/4 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-176481-R", "original_price": 54880, "sale_price": 54880, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/244/FIGURE-176481.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.180757"}, {"id": "FIGURE-176298-R", "name": "【あみあみ限定特典】アズールレーン ブレマートン 抱きまくらVer. 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-176298-R", "original_price": 14680, "sale_price": 14680, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/244/FIGURE-176298.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.180950"}, {"id": "FIGURE-175169-R", "name": "アズールレーン バッチ アニバーサリーイラスト Ver. 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-175169-R", "original_price": 16180, "sale_price": 16180, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/243/FIGURE-175169.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.181129"}, {"id": "FIGURE-172090-R", "name": "ライザのアトリエ2 ～失われた伝承と秘密の妖精～ ライザリン・シュタウト 1/6 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-172090-R", "original_price": 35980, "sale_price": 35980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-172090.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.181486"}, {"id": "FIGURE-177678-R", "name": "【特典】アズールレーン ニュージャージー コラボイラストVer. 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-177678-R", "original_price": 16480, "sale_price": 16480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/244/FIGURE-177678.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.181664"}, {"id": "FIGURE-030889-R", "name": "【特典】冴えない彼女の育てかた♭ 澤村・スペンサー・英梨々 水着Ver. 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-030889-R", "original_price": 5790, "sale_price": 5790, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/172/FIGURE-030889.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.181842"}, {"id": "FIGURE-154949-R", "name": "一番くじ ウマ娘 プリティーダービー 6弾 A賞 ライスシャワー フィギュア (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-154949-R", "original_price": 2980, "sale_price": 2980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/232/FIGURE-154949.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.182018"}, {"id": "FIG-MOE-3863-R", "name": "ねんどろいど 神のみぞ知るセカイ エルシィ", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-3863-R", "original_price": 4380, "sale_price": 4380, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/113/FIG-MOE-3863.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.182196"}, {"id": "FIGURE-001245-R", "name": "ねんどろいど 変態王子と笑わない猫。 筒隠月子", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-001245-R", "original_price": 5300, "sale_price": 5300, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/133/FIGURE-001245.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.182374"}, {"id": "FIG-MOE-2165-R", "name": "俺の妹がこんなに可愛いわけがない 高坂桐乃 1/8 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-2165-R", "original_price": 4380, "sale_price": 4380, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/104/FIG-MOE-2165.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.182551"}, {"id": "FIG-MOE-0656-R", "name": "ねんどろいどプレイセット＃2 和の暮らしB 客間セット", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-0656-R", "original_price": 4480, "sale_price": 4480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/091/FIG-MOE-0656.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.182727"}, {"id": "FIG-MOE-2421-R", "name": "figma 俺の妹がこんなに可愛いわけがない 高坂桐乃", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-2421-R", "original_price": 3680, "sale_price": 3680, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/111/FIG-MOE-2421.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.182897"}, {"id": "FIG-MOE-8444-R", "name": "figma アイドルマスター シンデレラガールズ 渋谷凛 （ワンダーフェスティバル2013冬限定）", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-8444-R", "original_price": 4460, "sale_price": 4460, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/133/FIG-MOE-8444.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.183069"}, {"id": "FIGURE-031543-R", "name": "ARTFX BASTARD！！ 暗黒の破壊神 ハイエンドフィギュア2 ダーク・シュナイダー 魔神Ver. 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-031543-R", "original_price": 7180, "sale_price": 7180, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/173/FIGURE-031543.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.183239"}, {"id": "FIG-MOE-2368-R", "name": "ハヤテのごとく！！ 桂ヒナギク -オン・ザ・ステージ- 1/8 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-2368-R", "original_price": 4980, "sale_price": 4980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/104/FIG-MOE-2368.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.183408"}, {"id": "FIGURE-012821-R", "name": "ねんどろいど ラブライブ！ 園田海未 練習着Ver.", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-012821-R", "original_price": 2180, "sale_price": 2180, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/153/FIGURE-012821.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.183582"}, {"id": "FIGURE-025027-R", "name": "コミック阿吽 吹石花 illustration by 深崎暮人 1/6 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-025027-R", "original_price": 10780, "sale_price": 10780, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/164/FIGURE-025027.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.183754"}, {"id": "FIGURE-007049-R", "name": "レガシー・オブ・リボルテック LR-014 『OVERMAN キングゲイナー』 キングゲイナー", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-007049-R", "original_price": 4480, "sale_price": 4480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/143/FIGURE-007049.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.183923"}, {"id": "FIG-MOE-03688-R", "name": "Fate/stay night “HYPER FATE COLLECTION”セイバーオルタ 1/8 完成品フィギュア(テックジャイアン誌上限定)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-03688-R", "original_price": 11480, "sale_price": 11480, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/123/FIG-MOE-03688.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.184091"}, {"id": "FIGURE-127578-R", "name": "アルカナディア ルミティア プラモデル", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-127578-R", "original_price": 4680, "sale_price": 4680, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/212/FIGURE-127578.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.184260"}, {"id": "FIG-MOE-5483-R", "name": "化物語 エクストラフィギュア Vol.2 羽川翼  （プライズ）", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIG-MOE-5483-R", "original_price": 3760, "sale_price": 3760, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/131/FIG-MOE-5483.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.184433"}, {"id": "FIGURE-038758-R", "name": "ねんどろいど 艦隊これくしょん -艦これ- Bismarck(ビスマルク)改", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-038758-R", "original_price": 6270, "sale_price": 6270, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/182/FIGURE-038758.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.184603"}, {"id": "FIGURE-055988-R", "name": "エルフ・コンプレックス エレイン エルフ・コンプレックス エレイン メイドVer. 1/7 完成品フィギュア[Wonderful Works]《在庫切れ》メイドVer. 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-055988-R", "original_price": 11050, "sale_price": 11050, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/201/FIGURE-055988.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.184773"}, {"id": "FIGURE-141726-R", "name": "ウマ娘 プリティーダービー ミホノブルボン フィギュア (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-141726-R", "original_price": 1040, "sale_price": 1040, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/223/FIGURE-141726.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.184942"}, {"id": "FIGURE-143577-R", "name": "黒獣 ～気高き聖女は白濁に染まる～ オリガ・ディスコルディア 1/4 完成品フィギュア(ネイティブオンラインショップ限定)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-143577-R", "original_price": 49980, "sale_price": 49980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/223/FIGURE-143577.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.185110"}, {"id": "FIGURE-147753-R", "name": "B-style アズールレーン ヴィットリオ・ヴェネト ラスペツィアの花 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-147753-R", "original_price": 16320, "sale_price": 16320, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/224/FIGURE-147753.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.185279"}, {"id": "FIGURE-174261-R", "name": "ノーゲーム・ノーライフ Aqua Float Girls フィギュア 白 Renewal (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-174261-R", "original_price": 1780, "sale_price": 1780, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/243/FIGURE-174261.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.185448"}, {"id": "FIGURE-170014-R", "name": "オリジナルキャラクター 小悪魔・牙牙子 YaYaKo 1/7 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-170014-R", "original_price": 9980, "sale_price": 9980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-170014.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.185617"}, {"id": "FIGURE-137256-R", "name": "プロジェクトセカイ カラフルステージ！ feat. 初音ミク スーパープレミアムフィギュア“ストリートのセカイの初音ミク” (プライズ)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-137256-R", "original_price": 3150, "sale_price": 3150, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/222/FIGURE-137256.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.185785"}, {"id": "FIGURE-173347-R", "name": "【特典】コミックバベル2021年8月号表紙イラスト『楓と鈴』 星月楓 1/5 完成品フィギュア (ネイティブオンラインショップ、FANZA限定)", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-173347-R", "original_price": 39880, "sale_price": 39880, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/244/FIGURE-173347.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.185955"}, {"id": "FIGURE-170952-R", "name": "POP UP PARADE 魔法少女にあこがれて マジアベーゼ L size 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-170952-R", "original_price": 18780, "sale_price": 18780, "discount": 0, "condition": "B", "has_multiple_conditions": true, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-170952.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.186126"}, {"id": "FIGURE-169069-R", "name": "PLAMATEA 楽園追放 -Expelled from Paradise- アンジェラ・バルザック プラモデル", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-169069-R", "original_price": 6050, "sale_price": 6050, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-169069.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.186295"}, {"id": "FIGURE-169687-R", "name": "バニースーツ プランニング ソフィア・F・シャーリング バニーVer.2nd 1/4 完成品フィギュア", "url": "https://www.amiami.jp/top/detail/detail?gcode=FIGURE-169687-R", "original_price": 34980, "sale_price": 34980, "discount": 0, "condition": "B", "has_multiple_conditions": false, "stock_status": "in_stock", "image_url": "https://img.amiami.jp/images/product/thumb300/242/FIGURE-169687.jpg", "type": "used", "scraped_at": "2026-04-03T15:46:08.186463"}]};
+
+        let items = [];
+
+        // 初始化
+        function init() {
+            items = EMBEDDED_DATA.items || [];
+            updateUI();
+        }
+
+        function updateUI() {
+            // 更新统计
+            document.getElementById('totalCount').textContent = items.length;
+
+            if (items.length > 0) {
+                const prices = items.map(i => i.sale_price).filter(p => p > 0);
+                document.getElementById('minPrice').textContent = '¥' + Math.min(...prices).toLocaleString();
+                document.getElementById('maxPrice').textContent = '¥' + Math.max(...prices).toLocaleString();
+                document.getElementById('avgPrice').textContent = '¥' + Math.round(prices.reduce((a,b) => a+b, 0) / prices.length).toLocaleString();
+
+                // 更新时间
+                document.getElementById('lastUpdate').textContent = EMBEDDED_DATA.timestamp || '--';
+            }
+
+            // 渲染表格
+            renderTable(items);
+
+            // 渲染图表
+            renderChart();
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('itemsTable');
+            tbody.innerHTML = data.map((item, idx) => `
+                <tr class="border-b border-gray-700 hover:bg-gray-750">
+                    <td class="py-3 px-2 text-gray-400">${idx + 1}</td>
+                    <td class="py-3 px-2">
+                        <div class="font-medium">${item.name || '-'}</div>
+                        <div class="text-xs text-gray-500">${item.id || '-'}</div>
+                    </td>
+                    <td class="py-3 px-2 text-right text-green-400 font-mono">¥${(item.sale_price || 0).toLocaleString()}</td>
+                    <td class="py-3 px-2 text-right text-gray-400 font-mono">¥${(item.original_price || 0).toLocaleString()}</td>
+                    <td class="py-3 px-2 text-center">
+                        <span class="px-2 py-1 rounded text-xs ${getConditionClass(item.condition)}">${item.condition || 'B'}</span>
+                    </td>
+                    <td class="py-3 px-2">
+                        <a href="${item.url}" target="_blank" class="text-blue-400 hover:text-blue-300 text-sm">查看</a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getConditionClass(cond) {
+            const classes = {
+                'A': 'bg-green-600',
+                'B': 'bg-yellow-600',
+                'C': 'bg-red-600'
+            };
+            return classes[cond] || 'bg-gray-600';
+        }
+
+        function sortItems(type) {
+            let sorted = [...items];
+            if (type === 'price_asc') {
+                sorted.sort((a, b) => a.sale_price - b.sale_price);
+            } else if (type === 'price_desc') {
+                sorted.sort((a, b) => b.sale_price - a.sale_price);
+            } else if (type === 'name') {
+                sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            }
+            renderTable(sorted);
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // 价格分布
+            const ranges = [
+                { label: '¥0-1k', min: 0, max: 1000 },
+                { label: '¥1-3k', min: 1000, max: 3000 },
+                { label: '¥3-5k', min: 3000, max: 5000 },
+                { label: '¥5-10k', min: 5000, max: 10000 },
+                { label: '¥10-20k', min: 10000, max: 20000 },
+                { label: '¥20k+', min: 20000, max: 999999 }
+            ];
+
+            const counts = ranges.map(r =>
+                items.filter(i => i.sale_price >= r.min && i.sale_price < r.max).length
+            );
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ranges.map(r => r.label),
+                    datasets: [{
+                        label: '商品数量',
+                        data: counts,
+                        backgroundColor: [
+                            '#22c55e',
+                            '#84cc16',
+                            '#eab308',
+                            '#f97316',
+                            '#ef4444',
+                            '#dc2626'
+                        ],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#374151' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 启动
+        init();
+    </script>
+</body>
+</html>
